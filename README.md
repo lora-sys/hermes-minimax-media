@@ -16,20 +16,18 @@ global (`api.minimax.io`) is the automatic fallback when only `MINIMAX_API_KEY` 
 
 ### Image (image-01)
 
-<table>
-<tr>
-<td align="center"><b>Prompt:</b> a tiny red apple on a white plate, studio lighting, photorealistic</td>
-</tr>
-<tr>
-<td><img src="docs/assets/screenshot-apple.jpg" alt="Apple on plate" width="480"/></td>
-</tr>
-</table>
+| Apple on plate | Cat astronaut | Cyberpunk city |
+|---|---|---|
+| ![Apple](docs/assets/screenshot-apple.jpg) | ![Cat astronaut](docs/assets/screenshot-cat-astronaut.png) | ![Cyberpunk city](docs/assets/screenshot-city.png) |
+| `a tiny red apple on a white plate, studio lighting, photorealistic` | `a cute cat astronaut floating in a colorful nebula, digital art, vibrant` | `futuristic tokyo cityscape at night, neon lights, rain reflections, cyberpunk` |
 
 ### Video (Hailuo-2.3, 6s @ 768P)
 
-> A calico cat napping in a sunbeam, soft cinematic lighting, gentle breathing motion.
+`a calico cat napping in a sunbeam, soft cinematic lighting, gentle breathing motion`
 
-[Watch on GitHub →](https://github.com/lora-sys/hermes-minimax-media/blob/main/docs/assets/screenshot-cat-napping.mp4)
+![Demo GIF](docs/assets/demo.gif)
+
+[MP4 source (608KB)](docs/assets/screenshot-cat-napping.mp4)
 
 ## Installation
 
