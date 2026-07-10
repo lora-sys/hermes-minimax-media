@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hermes-minimax-media"
+version = "0.1.0"
+description = "MiniMax (海螺 / minimax) image + video generation backends for Hermes Agent. Image: image-01 T2I+I2I. Video: Hailuo-2.3 / Hailuo-02 / S2V-01 T2V+I2V (async). CN endpoint first, global fallback."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [
+    {name = "lora-sys"},
+]
+keywords = [
+    "hermes", "hermes-agent", "minimax", "minimax",
+    "image-generation", "video-generation", "ai",
+    "hailuo", "t2i", "t2v", "i2v",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Multimedia :: Graphics",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/lora-sys/hermes-minimax-media"
+Repository = "https://github.com/lora-sys/hermes-minimax-media"
+Issues = "https://github.com/lora-sys/hermes-minimax-media/issues"
+Changelog = "https://github.com/lora-sys/hermes-minimax-media/blob/main/CHANGELOG.md"
+
+[project.entry-points."hermes_agent.plugins"]
+minimax-imggen = "hermes_minimax_media.plugins.image_gen.minimax"
+minimax-vidgen = "hermes_minimax_media.plugins.video_gen.minimax"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "requires_live: hits real MiniMax API; needs MINIMAX_CN_API_KEY or MINIMAX_API_KEY",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"hermes_minimax_media.plugins.image_gen.minimax" = ["plugin.yaml"]
+"hermes_minimax_media.plugins.video_gen.minimax" = ["plugin.yaml"]

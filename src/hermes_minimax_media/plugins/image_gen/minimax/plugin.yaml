@@ -1,0 +1,6 @@
+name: minimax
+version: 1.0.0
+description: "MiniMax (海螺) image generation backend. image-01 supports text-to-image and image-to-image with subject_reference. Auto-routes to CN endpoint (api.minimaxi.com) when MINIMAX_CN_* env is set, otherwise global (api.minimax.io)."
+author: NousResearch
+kind: backend
+requires_env: []  # works with either MINIMAX_CN_API_KEY or MINIMAX_API_KEY
