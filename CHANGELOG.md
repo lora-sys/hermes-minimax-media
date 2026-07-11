@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-11
+
+### Added
+- Music generation backend (`music_gen/minimax`): MiniMax Music API
+  - `music-2.6` (default): lyrics + style prompt -> MP3; supports instrumental
+    and `lyrics_optimizer` (model writes lyrics from prompt)
+  - `music-cover` / `music-cover-free`: cover song workflow (requires
+    `cover_feature_id` from the Music Cover Preprocess API — not yet exposed
+    via this plugin)
+  - Synchronous (one HTTP call, no polling) — much simpler than video
+  - Audio cached at `~/.hermes/audio_cache/minimax_<model>_<ts>.<ext>`
+  - `output_format=url` (default, faster) or `=hex` (base64 in response)
+  - Same CN-first / global-fallback env resolution as image + video
+- New entry point: `minimax-musicgen`
+- `music_gen/minimax` config block in README
+- New test file: `tests/test_music_gen_minimax.py` (16 unit tests, no network)
+- Optional live smoke test gated by `--run-live`
+
 ## [0.1.0] - 2026-07-10
 
 ### Added

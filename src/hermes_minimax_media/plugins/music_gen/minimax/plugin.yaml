@@ -1,0 +1,6 @@
+name: minimax
+version: 1.0.0
+description: "MiniMax (海螺) music generation backend. music-2.6 / music-cover / music-cover-free support text-to-music from lyrics + style prompt (sync, no polling). Auto-routes to CN endpoint (api.minimaxi.com) when MINIMAX_CN_* env is set, otherwise global (api.minimax.io)."
+author: NousResearch
+kind: backend
+requires_env: []  # works with either MINIMAX_CN_API_KEY or MINIMAX_API_KEY
