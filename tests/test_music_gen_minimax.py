@@ -367,20 +367,91 @@ class TestToolRegistration:
         assert "music-cover-free" in enum
 
     def test_handler_dispatches_to_generate_music(self, monkeypatch):
-        """Verify the handler's defaults and keyword forwarding."""
+        """Verify the handler unpacks the LLM ``args`` dict and forwards.
+
+        Bug regression: the dispatcher calls ``handler(args, **kw)`` with the
+        raw JSON object the LLM emitted — so the handler must read keys out
+        of that dict. The original signature ``handler(prompt: str, *,
+        lyrics=...)`` bound the entire dict to ``prompt`` and crashed inside
+        ``prompt.strip()``. This test guards the fix.
+        """
         monkeypatch.setenv("MINIMAX_CN_API_KEY", "sk-test")
         called = {}
         def fake_generate(**kwargs):
             called.update(kwargs)
             return {"success": True, "audio": "/tmp/x.mp3"}
         monkeypatch.setattr(music_mod, "generate_music", fake_generate)
+
+        # The shape hermes-agent actually passes in: an args dict.
         r = music_mod._music_generate_handler(
-            prompt="hello", lyrics="[Verse]\nhi", is_instrumental=True
+            {"prompt": "hello", "lyrics": "[Verse]\nhi", "is_instrumental": True}
         )
         assert r["success"]
         assert called["prompt"] == "hello"
         assert called["lyrics"] == "[Verse]\nhi"
         assert called["is_instrumental"] is True
+
+    def test_handler_applies_defaults_for_missing_args(self, monkeypatch):
+        """When the LLM only sends ``prompt``, the handler fills in defaults
+        for everything else — same behavior the JSON schema advertises."""
+        monkeypatch.setenv("MINIMAX_CN_API_KEY", "sk-test")
+        called = {}
+        monkeypatch.setattr(
+            music_mod, "generate_music",
+            lambda **kw: called.update(kw) or {"success": True},
+        )
+        music_mod._music_generate_handler({"prompt": "only prompt"})
+        assert called["prompt"] == "only prompt"
+        assert called["lyrics"] is None
+        assert called["is_instrumental"] is False
+        assert called["sample_rate"] == 44100
+        assert called["bitrate"] == 256000
+        assert called["audio_format"] == "mp3"
+        assert called["output_format"] == "url"
+
+    def test_handler_coerces_string_bool_and_int_args(self, monkeypatch):
+        """Some model providers serialize ``True`` as ``\"true\"`` and integers
+        as strings in the tool-args payload. The handler must still produce
+        the right typed values downstream."""
+        monkeypatch.setenv("MINIMAX_CN_API_KEY", "sk-test")
+        called = {}
+        monkeypatch.setattr(
+            music_mod, "generate_music",
+            lambda **kw: called.update(kw) or {"success": True},
+        )
+        music_mod._music_generate_handler({
+            "prompt": "p",
+            "is_instrumental": "true",
+            "lyrics_optimizer": "1",
+            "sample_rate": "32000",
+            "bitrate": "320000",
+        })
+        assert called["is_instrumental"] is True
+        assert called["lyrics_optimizer"] is True
+        assert called["sample_rate"] == 32000
+        assert called["bitrate"] == 320000
+
+    def test_handler_survives_none_args(self, monkeypatch):
+        """Defensive: ``args=None`` shouldn't blow up the wrapper."""
+        monkeypatch.setenv("MINIMAX_CN_API_KEY", "sk-test")
+        called = {}
+        def fake_gen(**kw):
+            called.update(kw)
+            # Mirror the real generate_music behavior for empty prompt.
+            if not (kw.get("prompt") or "").strip():
+                return {
+                    "success": False,
+                    "error": "prompt empty",
+                    "error_type": "invalid_argument",
+                }
+            return {"success": True}
+        monkeypatch.setattr(music_mod, "generate_music", fake_gen)
+        r = music_mod._music_generate_handler(None)  # type: ignore[arg-type]
+        # Should call generate_music with empty prompt (which then errors out
+        # cleanly with invalid_argument), not crash on None.strip().
+        assert called["prompt"] == ""
+        assert r["success"] is False
+        assert r["error_type"] == "invalid_argument"
 
 
 # ---------------------------------------------------------------------------

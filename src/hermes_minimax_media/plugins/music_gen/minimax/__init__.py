@@ -443,30 +443,65 @@ def generate_music(
 # ---------------------------------------------------------------------------
 
 
-def _music_generate_handler(
-    prompt: str = "",
-    *,
-    lyrics: str | None = None,
-    model: str | None = None,
-    is_instrumental: bool = False,
-    lyrics_optimizer: bool = False,
-    output_format: str = "url",
-    sample_rate: int = 44100,
-    bitrate: int = 256000,
-    audio_format: str = "mp3",
-    **_: Any,
-) -> dict[str, Any]:
-    """Tool handler — delegates to :func:`generate_music`."""
+# Defaults applied when the dispatcher forwards an ``args`` dict whose
+# fields may be missing (the LLM only sends what it filled in). Kept in
+# sync with the JSON-schema ``default`` declarations above.
+_HANDLER_DEFAULTS = {
+    "prompt": "",
+    "lyrics": None,
+    "model": None,
+    "is_instrumental": False,
+    "lyrics_optimizer": False,
+    "output_format": "url",
+    "sample_rate": 44100,
+    "bitrate": 256000,
+    "audio_format": "mp3",
+}
+
+
+def _music_generate_handler(args: dict[str, Any], **_: Any) -> dict[str, Any]:
+    """Tool handler — unpacks the LLM's ``args`` dict and delegates.
+
+    The hermes-agent tool dispatcher calls every registry handler as
+    ``handler(args, **kw)`` where ``args`` is the raw JSON-object the LLM
+    emitted. Earlier versions of this plugin declared the fields directly
+    on the handler signature (``handler(prompt: str, *, lyrics=...)``),
+    which crashed inside ``(prompt or "").strip()`` because the entire
+    dict was bound to ``prompt`` and ``dict`` has no ``.strip()``. This
+    wrapper mirrors the pattern used by Hermes built-in tools (see
+    ``tools/discord_tool.py::_make_handler``): extract known keys from
+    ``args`` with defaults, then forward to :func:`generate_music`.
+    """
+    merged = {**_HANDLER_DEFAULTS, **(args or {})}
+
+    # Coerce booleans — some model providers serialize ``True`` as ``"true"``
+    # or ``1`` in the tool-args payload.
+    def _coerce_bool(v: Any) -> bool:
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            return v.strip().lower() in ("true", "1", "yes", "on")
+        if isinstance(v, (int, float)):
+            return bool(v)
+        return False
+
+    # Coerce ints — same story for sample_rate / bitrate.
+    def _coerce_int(v: Any, default: int) -> int:
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            return default
+
     return generate_music(
-        prompt=prompt,
-        lyrics=lyrics,
-        model=model,
-        is_instrumental=bool(is_instrumental),
-        lyrics_optimizer=bool(lyrics_optimizer),
-        output_format=output_format,
-        sample_rate=int(sample_rate),
-        bitrate=int(bitrate),
-        audio_format=audio_format,
+        prompt=str(merged["prompt"]),
+        lyrics=merged["lyrics"],
+        model=merged["model"],
+        is_instrumental=_coerce_bool(merged["is_instrumental"]),
+        lyrics_optimizer=_coerce_bool(merged["lyrics_optimizer"]),
+        output_format=merged["output_format"],
+        sample_rate=_coerce_int(merged["sample_rate"], 44100),
+        bitrate=_coerce_int(merged["bitrate"], 256000),
+        audio_format=merged["audio_format"],
     )
 
 
