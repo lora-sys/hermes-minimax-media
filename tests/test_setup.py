@@ -229,8 +229,22 @@ class TestStatus:
 
 class TestCLI:
     def _run(self, *args: str, cwd: Path | None = None) -> subprocess.CompletedProcess:
+        # Drive the helper directly via `python -c` instead of `python -m`.
+        # `python -m PACKAGE.setup` first imports the package, which executes
+        # the plugin subpackages' top-level `__init__.py` files; those
+        # `from agent.image_gen_provider import ...` and crash outside a
+        # running hermes-agent process. `setup.py` itself has no agent
+        # import, so importing it directly stays faithful to what the
+        # `hermes-minimax-setup` console_script entry point does on a
+        # user machine (where hermes-agent IS installed — but in CI it
+        # is not).
+        cmd = (
+            "import sys; sys.path.insert(0, " + repr(str(SRC_DIR)) + "); "
+            "from hermes_minimax_media.setup import main; "
+            "sys.exit(main(" + repr(list(args)) + "))"
+        )
         return subprocess.run(
-            [sys.executable, "-m", "hermes_minimax_media.setup", *args],
+            [sys.executable, "-c", cmd],
             cwd=cwd,
             capture_output=True,
             text=True,
