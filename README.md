@@ -62,20 +62,35 @@ And the blues deep in my soul
 ### From PyPI
 
 ```bash
-pip install hermes-minimax-media
+pip install hermes-minimax-media[setup]   # [setup] pulls PyYAML for the setup helper
+hermes-minimax-setup                       # writes plugins.enabled + provider blocks
+hermes gateway restart                     # pick up the new config
 ```
 
-The package registers two entry points with the `hermes_agent.plugins` group
-(`minimax-imggen` and `minimax-vidgen`). Hermes auto-discovers them on next
-gateway start; you still need to enable the plugins in `config.yaml`
-(see Configuration below).
+The package registers three entry points with the `hermes_agent.plugins` group
+(`minimax-imggen`, `minimax-vidgen`, `minimax-musicgen`). Hermes auto-discovers
+them on next gateway start; **but the loader only enables plugins that are
+listed in `plugins.enabled` in `~/.hermes/config.yaml`**, so the
+`hermes-minimax-setup` one-shot is required to wire the names up. It's
+idempotent — re-running on an already-configured file is a no-op.
+
+Why a CLI helper instead of pip doing it directly? `setup.py` runs in an
+isolated build environment and can't reach `~/.hermes/`. We also didn't want
+`pip install` to silently mutate user config.
+
+If you'd rather do it manually:
+
+```bash
+hermes plugins enable minimax-imggen minimax-vidgen minimax-musicgen
+```
 
 ### From source
 
 ```bash
 git clone https://github.com/lora-sys/hermes-minimax-media.git
 cd hermes-minimax-media
-pip install -e .
+pip install -e ".[setup]"
+hermes-minimax-setup
 ```
 
 ### Manual install (no pip)
@@ -88,7 +103,16 @@ cp -r src/hermes_minimax_media/plugins/video_gen/minimax \
       ~/.hermes/plugins/video_gen/minimax
 cp -r src/hermes_minimax_media/plugins/music_gen/minimax \
       ~/.hermes/plugins/music_gen/minimax
+
+hermes plugins enable image_gen/minimax video_gen/minimax music_gen/minimax
 ```
+
+Note the **path-derived keys** (`image_gen/minimax`, etc.) for the manual
+install — those match the bundled layout that the directory scanner walks.
+The pip-installed entry-point plugins use the bare entry-point name
+(`minimax-imggen`, etc.). They're not interchangeable; pick the row that
+matches your install method. `hermes plugins enable` will tell you which
+keys are valid for your environment.
 
 ## Configuration
 
@@ -109,12 +133,15 @@ Get a key at https://api.minimaxi.com/user-center/basic-information/interface-ke
 
 ### 2. Enable the plugins in `~/.hermes/config.yaml`
 
+The `hermes-minimax-setup` one-shot (from the install step above) writes this
+block for you. If you'd rather hand-edit, the equivalent is:
+
 ```yaml
 plugins:
   enabled:
-    - image_gen/minimax
-    - video_gen/minimax
-    - music_gen/minimax
+    - minimax-imggen       # pip entry-point name (NOT image_gen/minimax — that's the manual-install key)
+    - minimax-vidgen
+    - minimax-musicgen
     # ... other plugins
 
 image_gen:
@@ -128,16 +155,34 @@ video_gen:
     model: MiniMax-Hailuo-2.3   # or Hailuo-02, S2V-01
 
 music_gen:
-  provider: minimax   # when a music_gen provider surface lands in hermes-agent;
-                      # currently the plugin registers the music_generate tool directly.
+  # NOTE: music_gen currently lacks a top-level provider surface in upstream
+  # Hermes — the music_generate tool is registered directly by the plugin's
+  # register() callback. We still set the per-provider model here so when the
+  # surface lands it's pre-configured.
   minimax:
     model: music-2.6   # or music-cover, music-cover-free
 ```
+
+**Why `minimax-imggen` instead of `image_gen/minimax`?** The pip-installed
+entry point declares its key as `minimax-imggen` (the entry-point name). The
+manual `~/.hermes/plugins/image_gen/minimax/` layout declares its key as
+`image_gen/minimax` (path-derived). The two layouts are not interchangeable
+— pick whichever matches your install method. `hermes plugins list` shows
+the right key for whatever is installed.
 
 ### 3. Restart Hermes
 
 ```bash
 hermes gateway restart
+```
+
+### Verify the setup
+
+```bash
+hermes plugins list --json | python3 -c "import sys, json; print([p['name'] for p in json.load(sys.stdin) if 'minimax' in p['name']])"
+# Expect: ['minimax-imggen', 'minimax-musicgen', 'minimax-vidgen']
+hermes-minimax-setup --check
+# Expect: OK  /home/lora/.hermes/config.yaml
 ```
 
 ## Usage
@@ -235,18 +280,41 @@ Out of credits. Top up at https://api.minimaxi.com/user-center/payment
 
 ### Plugin not loading
 
+Run `hermes-minimax-setup --check` — it'll tell you exactly what's missing
+from `plugins.enabled` (the loader silently leaves a not-enabled plugin out).
+
 Verify the path matches what `config.yaml` says:
 
 ```bash
-ls ~/.hermes/plugins/image_gen/minimax/
-ls ~/.hermes/plugins/video_gen/minimax/
+ls ~/.hermes/plugins/image_gen/minimax/    # manual install
+ls ~/.hermes/plugins/video_gen/minimax/    # manual install
 ```
 
-Each directory should contain both `__init__.py` and `plugin.yaml`. If you
-installed via `pip install hermes-minimax-media`, the entry points
-`minimax-imggen` and `minimax-vidgen` are auto-registered; the
-`image_gen/minimax` and `video_gen/minimax` names still need to be added
-to `plugins.enabled`.
+Each directory should contain both `__init__.py` and `plugin.yaml`.
+
+For pip installs, the entry-point discovery path is what counts:
+
+```bash
+python3 -c "import importlib.metadata; eps = importlib.metadata.entry_points(); \
+            names = eps.select(group='hermes_agent.plugins') if hasattr(eps,'select') else eps.get('hermes_agent.plugins',[]); \
+            print([e.name for e in names if 'minimax' in e.name])"
+# Expect: ['minimax-imggen', 'minimax-musicgen', 'minimax-vidgen']
+```
+
+If those names show up but the plugin still doesn't load, run
+`hermes-minimax-setup` to write them into `plugins.enabled`.
+
+If you installed via `pip install hermes-minimax-media`, the entry points
+`minimax-imggen` / `minimax-vidgen` / `minimax-musicgen` are auto-registered
+on install; you only need the `hermes-minimax-setup` step (or its manual
+equivalent `hermes plugins enable <name>`) to make Hermes' opt-in loader pick
+them up.
+
+> Historical note: the loader's entry-point branch sets `key=ep.name` and
+> `kind="standalone"`, so writing `plugins.enabled: [image_gen/minimax]`
+> (the path-derived key from the manual-install layout) does NOT match an
+> entry-point-installed plugin. Use the entry-point name (`minimax-imggen`)
+> instead. `hermes plugins list` will print the exact key to use.
 
 ## Development
 

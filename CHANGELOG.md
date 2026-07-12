@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-12
+
+### Added
+- New CLI helper `hermes-minimax-setup` (installed via `pip install
+  hermes-minimax-media[setup]` or `[test]`). One-shot configures
+  `~/.hermes/config.yaml`:
+    - Adds `minimax-imggen` / `minimax-vidgen` / `minimax-musicgen` to
+      `plugins.enabled`
+    - Writes the `image_gen` / `video_gen` / `music_gen` provider blocks
+    - Idempotent — re-running is a no-op
+  - Flags: `--check` (exit-code-only status), `--print` / `--dry-run`,
+    `--uninstall` (full reverse), `--json` (machine-readable output)
+- New `[project.optional-dependencies]` extras: `setup` (PyYAML),
+  `test` (pytest + PyYAML)
+- New test file `tests/test_setup.py` with 19 tests covering entry-point
+  declarations, setup/uninstall idempotence, --check exit codes, and
+  plugin register() callback wiring
+- README: installation instructions now lead with the
+  `pip install + hermes-minimax-setup` flow. Troubleshooting section
+  explains why the entry-point key (`minimax-imggen`) differs from the
+  manual-install key (`image_gen/minimax`)
+
+### Fixed
+- README previously told pip users to write `image_gen/minimax` (the
+  bundled-layout key) into `plugins.enabled`, which silently did NOT
+  enable the pip-installed entry-point plugin (different key shape).
+  `hermes-minimax-setup` writes the correct key automatically.
+- README documented `music_gen.provider: minimax` even though the
+  upstream `music_gen` provider surface hasn't landed in Hermes yet.
+  The setup helper writes the per-provider `minimax.model` block only
+  (no top-level `provider` key), matching what the plugin's `register()`
+  callback actually wires up.
+
+### Notes
+- Existing pip-install users who followed the old README (writing
+  `image_gen/minimax` etc. — the bundled-layout path-derived key) will
+  see `hermes plugins list` show those plugins as "not enabled".
+  `hermes-minimax-setup` rewrites the enabled list to the correct
+  entry-point names (`minimax-imggen` / `minimax-vidgen` /
+  `minimax-musicgen`). Manual-install users — who placed the package
+  under `~/.hermes/plugins/{image_gen,video_gen,music_gen}/minimax/`
+  per the manual-install section — already use the path-derived keys
+  and are unaffected. No data loss either way.
+
 ## [0.2.0] - 2026-07-11
 
 ### Added

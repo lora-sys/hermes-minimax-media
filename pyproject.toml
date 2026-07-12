@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hermes-minimax-media"
-version = "0.2.0"
-description = "MiniMax (海螺 / minimax) image + video + music generation backends for Hermes Agent. Image: image-01 T2I+I2I. Video: Hailuo-2.3 / Hailuo-02 / S2V-01 T2V+I2V (async). Music: music-2.6 / music-cover / music-cover-free lyrics+prompt -> MP3 (sync). CN endpoint first, global fallback."
+version = "0.3.0"
+description = "MiniMax (海螺 / minimax) image + video + music generation backends for Hermes Agent. Image: image-01 T2I+I2I. Video: Hailuo-2.3 / Hailuo-02 / S2V-01 T2V+I2V (async). Music: music-2.6 / music-cover / music-cover-free lyrics+prompt -> MP3 (sync). CN endpoint first, global fallback. Install: pip install hermes-minimax-media && hermes-minimax-setup."
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.11"
@@ -40,6 +40,17 @@ Changelog = "https://github.com/lora-sys/hermes-minimax-media/blob/main/CHANGELO
 minimax-imggen = "hermes_minimax_media.plugins.image_gen.minimax"
 minimax-vidgen = "hermes_minimax_media.plugins.video_gen.minimax"
 minimax-musicgen = "hermes_minimax_media.plugins.music_gen.minimax"
+
+[project.scripts]
+# Post-install one-shot helper: registers the entry-point names in
+# ~/.hermes/config.yaml so the loader picks them up. See setup.py docstring
+# for the why (loader uses key=ep.name for entry-points, so the path-derived
+# `video_gen/minimax` you may see in the bundled layout does NOT match).
+hermes-minimax-setup = "hermes_minimax_media.setup:main"
+
+[project.optional-dependencies]
+setup = ["pyyaml>=6.0"]
+test = ["pytest>=7", "pytest-cov", "pyyaml>=6.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
