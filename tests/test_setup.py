@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import importlib
 import importlib.metadata
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -250,7 +249,6 @@ class TestCLI:
             cwd=cwd,
             capture_output=True,
             text=True,
-            env={**os.environ, "PYTHONPATH": str(SRC_DIR)},
         )
 
     def test_check_exits_nonzero_when_unconfigured(self, tmp_hermes_home: Path) -> None:
